@@ -34,25 +34,19 @@ class RamDisk:
 
 
 class BatchSampler(Sampler):
-    def __init__(self, dataset, label_index, batch_size):
-        """
-        Args:
-            dataset (Dataset): Your dataset object.
-            label_index (int): The index of the label to balance on (e.g., 3 for patho_label).
-            batch_size (int): Total number of samples in one batch.
-                              It must be divisible by the number of classes.
-        """
+    def __init__(self, dataset, label_index, batch_size, base_seed=42):
         self.dataset = dataset
         self.label_index = label_index
         self.batch_size = batch_size
+        self.base_seed = base_seed
+        self.epoch = 0
 
-        # Group sample indices by class.
+        # group sample indices by class.
         self.class_to_indices = {}
         for idx in range(len(dataset)):
-            label = dataset[idx][label_index].item()  # extract label as a Python number
+            label = dataset[idx][label_index].item()
             self.class_to_indices.setdefault(label, []).append(idx)
 
-        # List of unique class labels (they don't need to start at 0)
         self.classes = list(self.class_to_indices.keys())
         self.n_classes = len(self.classes)
 
@@ -60,26 +54,30 @@ class BatchSampler(Sampler):
             raise ValueError("batch_size must be divisible by the number of classes.")
         self.samples_per_class = batch_size // self.n_classes
 
-    def __iter__(self):
-        # Shuffle the indices for each class at the start of each epoch.
-        for cls in self.classes:
-            np.random.shuffle(self.class_to_indices[cls])
+    def set_epoch(self, epoch):
+        self.epoch = epoch
 
-        # Determine the number of batches based on the smallest class.
-        num_batches = min(len(indices) for indices in self.class_to_indices.values()) // self.samples_per_class
+    def __iter__(self):
+        # create a deterministic RNG for this epoch
+        seed = self.base_seed + self.epoch
+        rng = np.random.RandomState(seed)
+
+        # shuffle indices per class
+        class_to_shuffled = {cls: rng.permutation(self.class_to_indices[cls]).tolist() for cls in self.classes}
+
+        # number of batches determined by the smallest class
+        num_batches = min(len(indices) for indices in class_to_shuffled.values()) // self.samples_per_class
 
         for i in range(num_batches):
             batch = []
             for cls in self.classes:
                 start = i * self.samples_per_class
                 end = start + self.samples_per_class
-                batch.extend(self.class_to_indices[cls][start:end])
-            # Optional: Shuffle the order of samples within the batch.
-            np.random.shuffle(batch)
+                batch.extend(class_to_shuffled[cls][start:end])
+            rng.shuffle(batch)
             yield batch
 
     def __len__(self):
-        # Compute the number of batches based on the class with the fewest samples.
         return min(len(indices) for indices in self.class_to_indices.values()) // self.samples_per_class
 
 
@@ -98,15 +96,13 @@ class CustomSet(Dataset):
         else:
             self.df = pd.read_csv(csv_file)
 
-        # Allowed manufacturer tags
+        # allowed manufacturer tags
         allowed_tags = ["Clearview", "Selenia", "Senograph", "Brand_A", "Brand_B", "Brand_C"]
 
-        # Apply filtering only if pred_tag is not None
+        # apply filtering only if pred_tag is not None
         if self.pred_tag is None:
-            # No filtering applied
             pass
         elif isinstance(self.pred_tag, list):
-            # Only filter using valid tags from the list
             valid_tags = [tag for tag in self.pred_tag if tag in allowed_tags]
             self.df = self.df[self.df["Manufacturer"].isin(valid_tags)].reset_index(drop=True)
         elif self.pred_tag in allowed_tags:

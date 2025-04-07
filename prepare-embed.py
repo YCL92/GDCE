@@ -7,7 +7,7 @@ import yaml
 # user defined param
 max_num_sample = 500
 
-# Load config file
+# load config file
 with open("config.yaml", "r") as file:
     config = yaml.safe_load(file)
 
@@ -97,5 +97,5 @@ for manufacturer, m_group in df_sampled.groupby("ManufacturerModelName"):
     print(manufacturer)
     print(m_group.tissueden.value_counts())
 
-# write to file
+# write results to file
 df_sampled.to_csv("./data/processed-embed.csv", index=False)

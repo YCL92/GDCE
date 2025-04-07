@@ -66,7 +66,7 @@ def main(subset, ckpt_dir, clamp):
     )
 
     for fold in range(1, 5 + 1):
-        logging.info(f"\n\nStart training @fold{fold:d}...")
+        logging.info(f"Start training @fold{fold:d}...")
 
         # set up dataloaders
         train_dataset = CustomSet(

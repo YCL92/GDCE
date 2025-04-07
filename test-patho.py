@@ -12,16 +12,18 @@ from util.data_util import CustomSet
 from util.model_util import Classifier, testClassifier
 
 
-def main(subset, ckpt_dir, fold, config, pred_tag='patho', clamp_method="full"):
+def main(subset, ckpt_dir, fold, config, pred_tag="patho", clamp_method="full"):
     # common params
     device = t.device("cuda" if t.cuda.is_available() else "cpu")
     img_folder = "images-%s" % subset
 
-    if 'embed' in config['dataset_dir'].lower():
-        dataset_name = 'embed'
+    if "embed" in ckpt_dir.lower():
+        dataset_name = "embed"
+        dataset_dir = config["embed_dir"]
         num_class = 4
     else:
-        dataset_name = 'rsna'
+        dataset_name = "rsna"
+        dataset_dir = config["rsna_dir"]
         num_class = 2
 
     # make folder for result if necessary
@@ -34,11 +36,11 @@ def main(subset, ckpt_dir, fold, config, pred_tag='patho', clamp_method="full"):
             v2.ToImage(),
             v2.ToDtype(t.float32),
             v2.Lambda(lambda x: x / 65535),
-            v2.Resize((config["img_size"], config["img_size"]))
+            v2.Resize((config["img_size"], config["img_size"])),
         ]
     )
     test_dataset = CustomSet(
-        config["dataset_dir"],
+        dataset_dir,
         img_folder,
         f"data/{dataset_name}-5fold-csv/test.csv",
         transform=test_transform,
@@ -52,13 +54,13 @@ def main(subset, ckpt_dir, fold, config, pred_tag='patho', clamp_method="full"):
     model = Classifier(backbone=config["model_name"], num_class=num_class, checkpoint_path=checkpoint_path).to(device)
 
     # testing
-    if dataset_name == 'embed':
-        test_auc, test_confmat = testClassifier(test_loader, model, task='multi-class', device=device)
+    if dataset_name == "embed":
+        test_auc, test_confmat = testClassifier(test_loader, model, task="multi-class", device=device)
 
         return test_auc, test_confmat
 
     else:
-        test_prec, test_recall = testClassifier(test_loader, model, task='binary', device=device)
+        test_prec, test_recall = testClassifier(test_loader, model, task="binary", device=device)
 
         return test_prec, test_recall
 
@@ -78,15 +80,16 @@ if __name__ == "__main__":
     os.makedirs(save_dir, exist_ok=True)
 
     # for EMBED dataset
-    if 'embed' in config['dataset_dir'].lower():
+    if "embed" in classifier_dir:
         machine_list = ["Clearview", "Selenia", "Senograph"]
         auc_dict = {machine: [] for machine in machine_list}
         confmat_dict = {machine: [] for machine in machine_list}
 
         for machine in machine_list:
             for fold in range(1, 6):
-                test_auc, test_confmat = main(subset, classifier_dir, fold, config, pred_tag=machine,
-                                              clamp_method=clamp_method)
+                test_auc, test_confmat = main(
+                    subset, classifier_dir, fold, config, pred_tag=machine, clamp_method=clamp_method
+                )
                 auc_dict[machine].append(test_auc)
                 confmat_dict[machine].append(test_confmat)
 
@@ -98,7 +101,7 @@ if __name__ == "__main__":
             avg_auc = np.mean(auc_dict[machine])
             avg_confmat = np.mean(confmat_dict[machine], axis=0)
 
-            # convert to percentages
+            # convert to percentage values
             row_sums = avg_confmat.sum(axis=1, keepdims=True)
             avg_confmat_percentage = (avg_confmat / row_sums) * 100
 
@@ -127,8 +130,9 @@ if __name__ == "__main__":
 
         for machine in machine_list:
             for fold in range(1, 6):
-                test_auc, test_confmat = main(subset, classifier_dir, fold, config, pred_tag=machine,
-                                              clamp_method=clamp_method)
+                test_auc, test_confmat = main(
+                    subset, classifier_dir, fold, config, pred_tag=machine, clamp_method=clamp_method
+                )
                 prec_dict[machine].append(test_auc)
                 recall_dict[machine].append(test_confmat)
 

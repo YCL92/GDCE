@@ -3,9 +3,9 @@ import csv
 import os
 from random import seed as radnseed
 
-import matplotlib.gridspec as gridspec
 import numpy as np
 import seaborn as sns
+import torch.backends.cudnn as cudnn
 from matplotlib import pyplot as plt
 from numpy.random import seed as npseed
 from sklearn.metrics import confusion_matrix, roc_auc_score
@@ -19,6 +19,9 @@ def initRandomSeed(seed=42):
     npseed(seed)
     manual_seed_all(seed)
     manual_seed(seed)
+
+    cudnn.deterministic = True
+    cudnn.benchmark = False
 
 
 class ModelSaver:
@@ -71,29 +74,6 @@ def write2CSV(filename, data):
         writer.writerow(data)
 
 
-def centeredSubplots(nrows, ncols, figsize, num_figs):
-    fig = plt.figure(figsize=figsize)
-    axs = []
-
-    m = num_figs % ncols
-    m = range(1, ncols + 1)[-m]  # subdivision of columns
-    gs = gridspec.GridSpec(nrows, m * ncols)
-
-    for i in range(0, num_figs):
-        row = i // ncols
-        col = i % ncols
-
-        if row == nrows - 1:  # center only last row
-            off = int(m * (ncols - num_figs % ncols) / 2)
-        else:
-            off = 0
-
-        ax = plt.subplot(gs[row, m * col + off : m * (col + 1) + off])
-        axs.append(ax)
-
-    return fig, axs
-
-
 def makeParts(file_dict, train_samples):
     # calculate the total number of True and False samples
     scan_labels = {}
@@ -127,7 +107,6 @@ def makeParts(file_dict, train_samples):
 
 
 def splitDict(in_dict, num_samples):
-    total_samples = sum(len(samples) for samples in in_dict.values())
     keys = list(in_dict.keys())
     split_samples = 0
     split_index = 0
@@ -158,10 +137,10 @@ def cmpMetrics(meta_data, target_fold):
     gt_list = [row[2] for row in filtered_data]
     pred_list = [row[4] for row in filtered_data]
 
-    # ompute ROC-AUC score
+    # compute ROC-AUC score
     roc_auc = roc_auc_score(gt_list, pred_list)
 
-    # ompute confusion matrix
+    # compute confusion matrix
     conf_matrix = confusion_matrix(gt_list, pred_list)
 
     return roc_auc, conf_matrix

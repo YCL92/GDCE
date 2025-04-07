@@ -4,13 +4,15 @@ Learning to Harmonize Cross-vendor X-ray Images by Non-linear Image Dynamics Cor
 
 ### Prepare required dataset
 
-Run `download-embed.py` to download the data required by the experiment. Additionally, download the RSNA pneumonia detection dataset from this [link]([RSNA Pneumonia Detection Challenge (2018) | RSNA](https://www.rsna.org/rsnai/ai-image-challenge/rsna-pneumonia-detection-challenge-2018)).
+Run `download-embed.py` to download the data required by the experiment, and run `prepare-embed.py` to process the EMBED dataset.
 
-After that, run `prepare-dataset.py` to pre-process the data, you can specify which dataset you will use by changing `dataset_dir` in `config.yaml`.
+Additionally, download the RSNA pneumonia detection dataset from this [link]([RSNA Pneumonia Detection Challenge (2018) | RSNA](https://www.rsna.org/rsnai/ai-image-challenge/rsna-pneumonia-detection-challenge-2018)), and run `prepare-rsna.py` to process the RSNA dataset.
+
+After that, run `prepare-dataset.py` to pre-process the data, you can specify which dataset you will use by changing `dataset_name`.
 
 ### Train downstream task model
 
-For evaluation purposes only, skip this section and simply follow the instructions in the "test" section.
+For evaluation purposes only, skip this section and simply follow the instructions in the "test" section. You can download our pre-trained weights from this [link](https://drive.google.com/drive/folders/1MvSS2VNVg7R2f-2aEkxLmjpk3zHOHMQ9?usp=sharing) and unzip to the "checkpoint" folder.
 
 Run `train-patho.py` to train the pathology classifier (breast density classification or phenomina detection).
 
@@ -28,11 +30,18 @@ and then run `train-enhance.py` to train GDCE.
 
 #### Test and compare results
 
-Replace the default GDCE and downstream task model checkpoint folders. Below is an example:
+<u>Test without GDCE: </u>Replace the  downstream task model checkpoint folder. Below is an example:
 
 ```
-enhancer_dir = "embed-clearview-20250308_010625" 
-classifier_dir = "embed-patho-full-20250307_164235"
+classifier_dir = 'embed-patho-full-20250317_143344'
 ```
 
-Run `test-patho.py` and `test-gdce.py` to get the 5-fold cross-validation results without and with GDCE normalization.
+Run `test-enhance.py` to get the 5-fold cross-validation results.
+
+<u>Test with GDCE:</u> Replace the default GDCE and downstream task model checkpoint folders. Below is an example:
+
+```
+machine_config = ["Clearview", "embed-clearview-20250406_142325", "embed-patho-full-20250317_143344"]
+```
+
+Run `test-enhance.py` to get the 5-fold cross-validation results.
